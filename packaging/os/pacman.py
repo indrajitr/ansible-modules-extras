@@ -60,7 +60,7 @@ options:
         required: false
         default: "no"
         choices: ["yes", "no"]
-        version_added: "1.3"
+        version_added: "2.0"
 
     update_cache:
         description:
@@ -70,12 +70,13 @@ options:
         default: "no"
         choices: ["yes", "no"]
 
-    upgrade
+    upgrade:
         description:
             - Whether or not to upgrade whole system
         required: false
         default: "no"
         choices: ["yes", "no"]
+        version_added: "2.0"
 '''
 
 EXAMPLES = '''
@@ -150,11 +151,6 @@ def update_package_db(module):
         return True
     else:
         module.fail_json(msg="could not update package db")
-
-def upgrade(module):
-    cmdupgrade = "pacman -Suq --noconfirm"
-    cmdneedrefresh = "pacman -Supq"
-    rc, stdout, stderr = module.run_command(cmdneedrefresh, check_rc=False)
 
 def upgrade(module):
     cmdupgrade = "pacman -Suq --noconfirm"

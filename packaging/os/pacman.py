@@ -65,13 +65,6 @@ options:
         required: false
         default: no
         choices: ["yes", "no"]
-
-    upgrade
-        description:
-            - Whether or not to upgrade whole system
-        required: false
-        default: no
-        choices: ["yes", "no"]
 '''
 
 EXAMPLES = '''
@@ -89,9 +82,6 @@ EXAMPLES = '''
 
 # Run the equivalent of "pacman -Sy" as a separate step
 - pacman: update_cache=yes
-
-# Run the equivalent of "pacman -Su" as a separate step
-- pacman: upgrade=yes
 '''
 
 import json
@@ -141,23 +131,6 @@ def update_package_db(module, pacman_path):
         return True
     else:
         module.fail_json(msg="could not update package db")
-
-def upgrade(module, pacman_path):
-    cmdupgrade = "%s -Suq --noconfirm" % (pacman_path)
-    cmdneedrefresh = "%s -Qqu" % (pacman_path)
-    rc, stdout, stderr = module.run_command(cmdneedrefresh, check_rc=False)
-
-    if rc == 0:
-        if module.check_mode:
-            data = stdout.split('\n')
-            module.exit_json(changed=True, msg="%s package(s) would be upgraded" % len(data))
-        rc, stdout, stderr = module.run_command(cmdupgrade, check_rc=False)
-        if rc == 0:
-            module.exit_json(changed=True, msg='System upgraded')
-        else:
-            module.fail_json(msg="Could not upgrade")
-    else:
-        module.exit_json(changed=False, msg='Nothing to upgrade')
 
 def remove_packages(module, pacman_path, packages):
     if module.params["recurse"]:
@@ -239,9 +212,8 @@ def main():
             name         = dict(aliases=['pkg']),
             state        = dict(default='present', choices=['present', 'installed', "latest", 'absent', 'removed']),
             recurse      = dict(default=False, type='bool'),
-            upgrade      = dict(default=False, type='bool'),
             update_cache = dict(default=False, aliases=['update-cache'], type='bool')),
-        required_one_of = [['name', 'update_cache', 'upgrade']],
+        required_one_of = [['name', 'update_cache']],
         supports_check_mode = True)
 
     pacman_path = module.get_bin_path('pacman', True)
@@ -259,14 +231,11 @@ def main():
 
     if p["update_cache"] and not module.check_mode:
         update_package_db(module, pacman_path)
-        if not (p['name'] or p['upgrade']):
+        if not p['name']:
             module.exit_json(changed=True, msg='Updated the package master lists')
 
-    if p['update_cache'] and module.check_mode and not (p['name'] or p['upgrade']):
+    if p['update_cache'] and module.check_mode and not p['name']:
         module.exit_json(changed=True, msg='Would have updated the package cache')
-
-    if p['upgrade']:
-        upgrade(module, pacman_path)
 
     if p['name']:
         pkgs = p['name'].split(',')
